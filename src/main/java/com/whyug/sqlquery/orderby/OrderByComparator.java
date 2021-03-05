@@ -44,9 +44,9 @@ public class OrderByComparator implements Comparator {
                 e.printStackTrace();
             }
             if (orderBy.getSort().equalsIgnoreCase("asc")) {
-                value = o1Column.toString().compareTo(o2Column.toString());
+                value = o1Column.hashCode() > o2Column.hashCode() ? 1 : o1Column.hashCode() == o2Column.hashCode() ? 0 : -1;
             } else if (orderBy.getSort().equalsIgnoreCase("desc")) {
-                value = o2Column.toString().compareTo(o1Column.toString());
+                value = o1Column.hashCode() < o2Column.hashCode() ? 1 : o1Column.hashCode() == o2Column.hashCode() ? 0 : -1;
             } else {
                 throw new RuntimeException();
             }

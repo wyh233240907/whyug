@@ -1,8 +1,11 @@
 package com.whyug.sqlquery;
 
+import com.whyug.sqlquery.condition.GroupBy;
 import com.whyug.sqlquery.condition.Limit;
 import com.whyug.sqlquery.condition.OrderBy;
 import com.whyug.sqlquery.condition.Where;
+import com.whyug.sqlquery.entity.GroupObject;
+import com.whyug.sqlquery.entity.Order;
 import com.whyug.sqlquery.entity.Student;
 import com.whyug.sqlquery.enums.ExprEnum;
 import com.whyug.sqlquery.enums.LogicEnum;
@@ -15,8 +18,11 @@ import com.whyug.sqlquery.orderby.OrderByComparator;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,7 +77,7 @@ public class SQLQuery {
         where.setValue("3");
         Where[] wheres = {where};
 
-        List<Object> query = query(list, wheres, null, null);
+        List<Object> query = query(list, wheres, null, null, null);
         for (Object o : query) {
             System.out.println(o);
         }
@@ -97,7 +103,7 @@ public class SQLQuery {
         where.setValue("3");
         Where[] wheres = {where};
 
-        List<Object> query = query(list, wheres, null, null);
+        List<Object> query = query(list, wheres, null, null, null);
         for (Object o : query) {
             System.out.println(o);
         }
@@ -122,7 +128,7 @@ public class SQLQuery {
         where.setValue("3");
         Where[] wheres = {where};
 
-        List<Object> query = query(list, wheres, null, null);
+        List<Object> query = query(list, wheres, null, null, null);
         for (Object o : query) {
             System.out.println(o);
         }
@@ -159,7 +165,7 @@ public class SQLQuery {
         where2.setValue("张三0");
         Where[] wheres = {where, where1, where2};
 
-        List<Object> query = query(list, wheres, null, null);
+        List<Object> query = query(list, wheres, null, null, null);
         for (Object o : query) {
             System.out.println(o);
         }
@@ -170,19 +176,24 @@ public class SQLQuery {
      */
     @Test
     public void test5() {
-        List<Object> list = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
-            Student student = new Student();
-            student.setAge(i + 1);
-            student.setName("张三" + i);
-            list.add(student);
-        }
+        Order order1 = new Order("张三", 23, 15, 1);
+        Order order2 = new Order("李四", 13, 11, 2);
+        Order order3 = new Order("王五", 23, 15, 3);
+        Order order4 = new Order("赵六", 23, 12, 4);
+        Order order5 = new Order("钱七", 11, 12, 5);
+
+        List<Object> lists = new ArrayList<>();
+        lists.add(order1);
+        lists.add(order2);
+        lists.add(order3);
+        lists.add(order4);
+        lists.add(order5);
 
         OrderBy orderBy = new OrderBy();
         orderBy.setSort("asc");
-        orderBy.setColumn(new String[]{"age"});
+        orderBy.setColumn(new String[]{"age", "order", "sort"});
 
-        List<Object> query = query(list, null, orderBy, null);
+        List<Object> query = query(lists, null, orderBy, null, null);
         for (Object o : query) {
             System.out.println(o);
         }
@@ -205,20 +216,57 @@ public class SQLQuery {
         limit.setOffset(2);
         limit.setMaxSize(5);
 
-        List<Object> query = query(list, null, null, limit);
+        List<Object> query = query(list, null, null, null, limit);
         for (Object o : query) {
             System.out.println(o);
         }
     }
 
-    public List<Object> query(List<Object> data, Where[] wheres, OrderBy orderBy, Limit limit) {
+    /**
+     * groupBy测试
+     */
+    @Test
+    public void test7() {
+        Order order1 = new Order("张三", 23, 1553, 1);
+        Order order2 = new Order("李四", 14, 1556, 2);
+        Order order3 = new Order("王五", 23, 1553, 3);
+        Order order4 = new Order("赵六", 14, 1557, 4);
+        Order order5 = new Order("钱七", 14, 1557, 5);
+        Order order6 = new Order("吴八", 23, 1558, 6);
+        Order order7 = new Order("孙九", 23, 1558, 7);
+        Order order8 = new Order("刘十", 11, 1661, 8);
+
+        List<Object> lists = new ArrayList<>();
+        lists.add(order1);
+        lists.add(order2);
+        lists.add(order3);
+        lists.add(order4);
+        lists.add(order5);
+        lists.add(order6);
+        lists.add(order7);
+        lists.add(order8);
+
+        GroupBy groupBy = new GroupBy();
+        groupBy.setColumn(new String[]{"age","order"});
+
+        List<Object> query = query(lists, null, null, groupBy, null);
+        for (Object o : query) {
+            System.out.println(o);
+        }
+    }
+
+
+    public List<Object> query(List<Object> data, Where[] wheres, OrderBy orderBy, GroupBy groupBy, Limit limit) {
         Stream dataStream = data.stream();
         if (wheres != null && wheres.length > 0)
             dataStream = where(dataStream, wheres);
+        if (groupBy != null && groupBy.getColumn().length > 0)
+            dataStream = groupBy(dataStream, groupBy);
         if (orderBy != null && orderBy.getColumn().length > 0)
             dataStream = orderBy(dataStream, orderBy);
         if (limit != null)
             dataStream = dataStream.skip(limit.getOffset()).limit(limit.getMaxSize());
+
         List collect = (List) dataStream.collect(Collectors.toList());
         return collect;
     }
@@ -290,7 +338,42 @@ public class SQLQuery {
     public Stream orderBy(Stream datas, OrderBy orderBy) {
         OrderByComparator orderByComparator = new OrderByComparator();
         orderByComparator.setOrderBy(orderBy);
-        return datas.sorted(orderByComparator);
+        Stream sorted = datas.sorted(orderByComparator);
+        return sorted;
+    }
+
+    public Stream groupBy(Stream datas, GroupBy groupBy) {
+        List lists = (List) datas.collect(Collectors.toList());
+        //存分组的结果
+        Map<String, GroupObject> groupObjs = new HashMap<>();
+
+        for (Object list : lists) {
+            StringBuilder builder = new StringBuilder();
+            //组装要分组的字段为一个key，根据key进行分组
+            for (String s : groupBy.getColumn()) {
+                try {
+                    Field field = list.getClass().getDeclaredField(s);
+                    field.setAccessible(true);
+                    String str = field.get(list).toString();
+                    builder.append(str);
+                } catch (NoSuchFieldException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (groupObjs.containsKey(builder.toString())) {
+                GroupObject groupObject = groupObjs.get(builder.toString());
+                groupObject.setCount(groupObject.getCount() + 1);
+            } else {
+                GroupObject groupObject = new GroupObject();
+                groupObject.setCount(1);
+                groupObject.setObject(list);
+                groupObjs.put(builder.toString(), groupObject);
+            }
+        }
+        return groupObjs.values().stream();
     }
 
 
